@@ -20,12 +20,11 @@ export function ShapeRenderer({
   if (node.type === "square")
     return (
       <Group
-        draggable
+        draggable={true}
         x={x ?? 0}
         y={y ?? 0}
         onDragStart={(e) => console.log("Drag started", e)}
         onDragMove={(e) => console.log("Dragging", e)}
-        onClick={() => console.log("Clicked")}
         onDragEnd={(e) =>
           updatePosition({
             x: e.target.x(),
@@ -40,19 +39,10 @@ export function ShapeRenderer({
             {...validProps}
             offsetX={-node.width / 2}
             offsetY={-node.height / 2}
-            listening={false}
-            onClick={() => console.log("Clicked")}
           />
         )}
-        {node.contentType === "image" && (
-          <Image image={image} {...node} listening={false} />
-        )}
-        <Rect
-          {...validProps}
-          fill={node.bgColor || "green"}
-          listening={false}
-          onClick={() => console.log("Clicked")}
-        />
+        {node.contentType === "image" && <Image image={image} {...node} />}
+        <Rect {...validProps} fill={node.bgColor || "green"} />
       </Group>
     );
 
@@ -67,12 +57,12 @@ export function ShapeRenderer({
         onDragEnd={(e) => console.log("Drag ended", e)}
       >
         {node.contentType === "text" && (
-          <Text text={node.content} {...validProps} listening={false} />
+          <Text text={node.content} {...validProps} />
         )}
         {node.contentType === "image" && (
-          <Image image={image} {...validProps} listening={false} />
+          <Image image={image} {...validProps} />
         )}
-        <Circle {...validProps} listening={false} />
+        <Circle {...validProps} />
       </Group>
     );
 
@@ -87,12 +77,12 @@ export function ShapeRenderer({
         onDragEnd={(e) => console.log("Drag ended", e)}
       >
         {node.contentType === "text" && (
-          <Text text={node.content} {...validProps} listening={false} />
+          <Text text={node.content} {...validProps} />
         )}
         {node.contentType === "image" && (
-          <Image image={image} {...validProps} listening={false} />
+          <Image image={image} {...validProps} />
         )}
-        <Rect {...validProps} rotation={45} listening={false} />
+        <Rect {...validProps} rotation={45} />
       </Group>
     );
 
