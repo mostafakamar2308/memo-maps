@@ -2,36 +2,18 @@ import { Circle, Group, Image, Rect, Text } from "react-konva";
 import { Node } from "@/types/Canvas";
 import useImage from "use-image";
 
-export function ShapeRenderer({
-  node,
-  updatePosition,
-}: {
-  node: Node;
-  updatePosition: (newPosition: { x: number; y: number }) => void;
-}) {
+export function ShapeRenderer({ node }: { node: Node }) {
   const [image] = useImage(
     node.contentType === "image"
       ? "https://konvajs.org/assets/darth-vader.jpg"
       : ""
   );
 
-  const { content, contentType, id, layer, x, y, ...validProps } = node;
+  const { content, x, y, ...validProps } = node;
 
   if (node.type === "square")
     return (
-      <Group
-        draggable={true}
-        x={x ?? 0}
-        y={y ?? 0}
-        onDragStart={(e) => console.log("Drag started", e)}
-        onDragMove={(e) => console.log("Dragging", e)}
-        onDragEnd={(e) =>
-          updatePosition({
-            x: e.target.x(),
-            y: e.target.y(),
-          })
-        }
-      >
+      <Group draggable={true} x={x ?? 0} y={y ?? 0}>
         {node.contentType === "text" && content !== "" && (
           <Text
             fill={node.textColor || "black"}
@@ -48,41 +30,27 @@ export function ShapeRenderer({
 
   if (node.type === "circle")
     return (
-      <Group
-        draggable
-        x={x ?? 0}
-        y={y ?? 0}
-        onDragStart={(e) => console.log("Drag started", e)}
-        onDragMove={(e) => console.log("Dragging", e)}
-        onDragEnd={(e) => console.log("Drag ended", e)}
-      >
+      <Group draggable x={x ?? 0} y={y ?? 0}>
         {node.contentType === "text" && (
           <Text text={node.content} {...validProps} />
         )}
         {node.contentType === "image" && (
           <Image image={image} {...validProps} />
         )}
-        <Circle {...validProps} />
+        <Circle {...validProps} fill={node.bgColor || "green"} />
       </Group>
     );
 
   if (node.type === "diamond")
     return (
-      <Group
-        draggable
-        x={x ?? 0}
-        y={y ?? 0}
-        onDragStart={(e) => console.log("Drag started", e)}
-        onDragMove={(e) => console.log("Dragging", e)}
-        onDragEnd={(e) => console.log("Drag ended", e)}
-      >
+      <Group draggable x={x ?? 0} y={y ?? 0}>
         {node.contentType === "text" && (
           <Text text={node.content} {...validProps} />
         )}
         {node.contentType === "image" && (
           <Image image={image} {...validProps} />
         )}
-        <Rect {...validProps} rotation={45} />
+        <Rect {...validProps} fill={node.bgColor || "green"} rotation={45} />
       </Group>
     );
 

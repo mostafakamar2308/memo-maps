@@ -4,7 +4,7 @@ export type Node = {
   y: number;
   width: number;
   height: number;
-  type: "square" | "circle" | "diamond";
+  type: "square" | "circle" | "diamond" | "custom";
   contentType: "text" | "image";
   content: string;
   layer: number;
