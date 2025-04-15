@@ -4,9 +4,11 @@ export type Node = {
   y: number;
   width: number;
   height: number;
-  type: "square" | "circle" | "diamond" | "custom";
+  type: "square" | "circle" | "diamond" | "line" | "custom";
   contentType: "text" | "image";
   content: string;
+  points?: number[];
+  closed?: boolean;
   layer: number;
   borderSize?: number;
   borderColor?: string;
@@ -22,3 +24,12 @@ export type Node = {
 export type Map = {
   nodes: Node[];
 };
+
+export type Tool =
+  | "select"
+  | "square"
+  | "diamond"
+  | "eraser"
+  | "line"
+  | "eclipse"
+  | "arrow";
