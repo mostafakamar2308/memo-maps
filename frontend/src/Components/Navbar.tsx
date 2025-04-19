@@ -47,19 +47,19 @@ export function NavBar({
         diamond
       </button>
       <button
+        onClick={() => changeTool("hand-drawn")}
+        className={cn(
+          "duration-300 p-2 px-3 break-words w-full whitespace-nowrap rounded-xl hover:bg-[#eee] cursor-pointer",
+          activeTool === "hand-drawn" && "bg-[#eee]"
+        )}
+      >
+        hand drawing{" "}
+      </button>
+      <button
         onClick={() => changeTool("line")}
         className={cn(
           "duration-300 p-2 px-3 rounded-xl hover:bg-[#eee] cursor-pointer",
           activeTool === "line" && "bg-[#eee]"
-        )}
-      >
-        line
-      </button>
-      <button
-        onClick={() => changeTool("arrow")}
-        className={cn(
-          "duration-300 p-2 px-3 rounded-xl hover:bg-[#eee] cursor-pointer",
-          activeTool === "arrow" && "bg-[#eee]"
         )}
       >
         arrow

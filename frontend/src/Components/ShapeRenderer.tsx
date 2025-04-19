@@ -1,4 +1,4 @@
-import { Group, Image, Rect, Text, Ellipse, Shape } from "react-konva";
+import { Group, Image, Rect, Text, Ellipse, Shape, Line } from "react-konva";
 import { Node } from "@/types/Canvas";
 import useImage from "use-image";
 
@@ -108,6 +108,53 @@ export function ShapeRenderer({ node }: { node: Node }) {
           fill={node.bgColor}
           strokeWidth={2}
         />
+      </Group>
+    );
+  }
+
+  const getArrowHeadPoints = (data: number[]) => {
+    if (!data) return;
+    const dx = data[2] - data[0];
+    const dy = data[3] - data[1];
+    const angle = Math.atan2(dy, dx);
+    const arrowLength = 15;
+    const arrowAngle = Math.PI / 6;
+
+    return [
+      {
+        x: data[2] - arrowLength * Math.cos(angle - arrowAngle),
+        y: data[3] - arrowLength * Math.sin(angle - arrowAngle),
+      },
+      {
+        x: data[2] - arrowLength * Math.cos(angle + arrowAngle),
+        y: data[3] - arrowLength * Math.sin(angle + arrowAngle),
+      },
+    ];
+  };
+
+  if (["hand-drawn", "line"].includes(node.type) && node.points) {
+    return (
+      <Group draggable>
+        <Line points={node.points} stroke="#f00" strokeWidth={2} />
+        {node.type === "line" ? (
+          <Shape
+            sceneFunc={(context) => {
+              const arrowHead = getArrowHeadPoints(node.points!);
+              if (!arrowHead || !node.points) return;
+              context.beginPath();
+              context.moveTo(node.points[2], node.points[3]);
+              context.lineTo(arrowHead[0].x, arrowHead[0].y);
+              context.lineTo(arrowHead[1].x, arrowHead[1].y);
+              context.strokeStyle = "#f00";
+              context.fillStyle = "#f00";
+              context.closePath();
+              context.stroke();
+              context.fill();
+            }}
+            stroke="#f00"
+            strokeWidth={2}
+          />
+        ) : null}
       </Group>
     );
   }

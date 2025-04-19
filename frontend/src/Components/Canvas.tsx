@@ -1,4 +1,4 @@
-import { Layer, Stage, Rect, Ellipse, Shape } from "react-konva";
+import { Layer, Stage, Rect, Ellipse, Shape, Line } from "react-konva";
 import { useState } from "react";
 import { Node, Tool } from "@/types/Canvas";
 import { ShapeRenderer } from "@/Components/ShapeRenderer";
@@ -35,6 +35,12 @@ export function StageCanvas({ activeTool }: Props) {
     startY: number;
     endX: number;
     endY: number;
+  } | null>(null);
+
+  const [tempLine, setTempLine] = useState<number[] | null>(null);
+  const [tempArrow, setTempArrow] = useState<{
+    start: { x: number; y: number };
+    end: { x: number; y: number };
   } | null>(null);
 
   // Calculate extended bounds (200% of visible area)
@@ -125,6 +131,30 @@ export function StageCanvas({ activeTool }: Props) {
         endY: canvasY,
       });
     }
+    if (!e.ctrlKey && activeTool === "hand-drawn") {
+      const stage = e.target as HTMLDivElement; // Get the stage element
+      const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
+
+      // Calculate the position relative to the infinite canvas
+      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
+      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+
+      setIsDrawing(true);
+
+      setTempLine([canvasX, canvasY]);
+    }
+
+    if (!e.ctrlKey && activeTool === "line") {
+      const stage = e.target as HTMLDivElement;
+      const rect = stage.getBoundingClientRect();
+      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
+      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+      setIsDrawing(true);
+      setTempArrow({
+        start: { x: canvasX, y: canvasY },
+        end: { x: canvasX, y: canvasY },
+      });
+    }
   };
 
   // Handle mouse move for panning or resizing the circle
@@ -187,6 +217,25 @@ export function StageCanvas({ activeTool }: Props) {
         endX: canvasX,
         endY: canvasY,
       });
+    }
+
+    if (activeTool === "hand-drawn" && isDrawing && tempLine) {
+      const stage = e.target as HTMLDivElement; // Get the stage element
+      const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
+
+      // Calculate the position relative to the infinite canvas
+      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
+      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+
+      if (tempLine) setTempLine([...tempLine, canvasX, canvasY]);
+    }
+
+    if (activeTool === "line" && isDrawing && tempArrow) {
+      const stage = e.target as HTMLDivElement;
+      const rect = stage.getBoundingClientRect();
+      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
+      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+      setTempArrow((prev) => ({ ...prev!, end: { x: canvasX, y: canvasY } }));
     }
   };
 
@@ -313,6 +362,67 @@ export function StageCanvas({ activeTool }: Props) {
       setIsDrawing(false);
       setTempRhomboid(null);
     }
+
+    if (activeTool === "hand-drawn" && isDrawing && tempLine) {
+      const firstPoint = [tempLine[0], tempLine[1]];
+      const tempLineLength = tempLine.length;
+
+      const lastPoint = [
+        tempLine[tempLineLength - 1],
+        tempLine[tempLineLength - 2],
+      ];
+
+      const distance = Math.sqrt(
+        Math.pow(firstPoint[0] - lastPoint[0], 2) +
+          Math.pow(firstPoint[1] - lastPoint[1], 2)
+      );
+
+      setNodes((prev) => [
+        ...prev,
+        {
+          type: "hand-drawn",
+          x: firstPoint[0],
+          y: firstPoint[1],
+          width: distance, // Diameter
+          height: distance, // Diameter
+          points: tempLine,
+          content: "",
+          contentType: "text",
+          layer: 1,
+          bgColor: getRandomHSLColor(), // Set a default fill color
+          id: `${Date.now()}`, // Unique ID based on timestamp
+        },
+      ]);
+      setIsDrawing(false);
+      setTempLine(null);
+    }
+
+    if (activeTool === "line" && isDrawing && tempArrow) {
+      setNodes((prev) => [
+        ...prev,
+        {
+          type: "line",
+          x: tempArrow.start.x,
+          y: tempArrow.start.y,
+          points: [
+            tempArrow.start.x,
+            tempArrow.start.y,
+            tempArrow.end.x,
+            tempArrow.end.y,
+          ],
+          width: 5,
+          height: 5,
+          layer: 1,
+          content: "",
+          contentType: "text",
+          borderColor: "#000",
+          borderSize: 2,
+          id: Date.now().toString(),
+        },
+      ]);
+      setIsDrawing(false);
+      setTempArrow(null);
+    }
   };
 
   const renderTempRhomboid = () => {
@@ -376,6 +486,27 @@ export function StageCanvas({ activeTool }: Props) {
 
     // Update the zoom level
     setZoomLevel(newZoomLevel);
+  };
+
+  const getArrowHeadPoints = (data: typeof tempArrow) => {
+    if (!data) return;
+    const { start, end } = data;
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const angle = Math.atan2(dy, dx);
+    const arrowLength = 15;
+    const arrowAngle = Math.PI / 6;
+
+    return [
+      {
+        x: end.x - arrowLength * Math.cos(angle - arrowAngle),
+        y: end.y - arrowLength * Math.sin(angle - arrowAngle),
+      },
+      {
+        x: end.x - arrowLength * Math.cos(angle + arrowAngle),
+        y: end.y - arrowLength * Math.sin(angle + arrowAngle),
+      },
+    ];
   };
 
   // Generate adaptive grid lines
@@ -452,7 +583,7 @@ export function StageCanvas({ activeTool }: Props) {
 
       {/* Render temporary circle while drawing */}
       <Layer>
-        {tempCircle && (
+        {activeTool === "eclipse" && tempCircle && (
           <Ellipse
             x={tempCircle.centerX}
             y={tempCircle.centerY}
@@ -462,6 +593,7 @@ export function StageCanvas({ activeTool }: Props) {
             strokeWidth={2}
           />
         )}
+
         {activeTool === "diamond" && tempRhomboid && renderTempRhomboid()}
 
         {activeTool === "square" && tempShape && (
@@ -473,6 +605,45 @@ export function StageCanvas({ activeTool }: Props) {
             stroke="#f00"
             strokeWidth={2}
           />
+        )}
+
+        {"line" === activeTool && tempArrow && (
+          <>
+            <Line
+              points={[
+                tempArrow.start.x,
+                tempArrow.start.y,
+                tempArrow.end.x,
+                tempArrow.end.y,
+              ]}
+              stroke="#f00"
+              strokeWidth={3}
+            />
+            <Shape
+              sceneFunc={(context) => {
+                if (!tempArrow) return;
+                const arrowHead = getArrowHeadPoints(tempArrow);
+                if (!arrowHead) return;
+                context.beginPath();
+                context.moveTo(tempArrow.end.x, tempArrow.end.y);
+                context.lineTo(arrowHead[0].x, arrowHead[0].y);
+                context.lineTo(arrowHead[1].x, arrowHead[1].y);
+                context.strokeStyle = "#f00";
+                context.fillStyle = "#f00";
+                context.closePath();
+                context.stroke();
+                context.fill();
+              }}
+              stroke="#f00"
+              strokeWidth={2}
+            />
+          </>
+        )}
+
+        {"hand-drawn" === activeTool && tempLine && (
+          <>
+            <Line points={tempLine} stroke="#f00" strokeWidth={3} />
+          </>
         )}
       </Layer>
     </Stage>
