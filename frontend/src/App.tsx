@@ -11,7 +11,7 @@ function App() {
 
   return (
     <main className="relative">
-      <StageCanvas activeTool={activeTool} />
+      <StageCanvas changeActiveTool={changeTool} activeTool={activeTool} />
       <NavBar activeTool={activeTool} changeTool={changeTool} />
     </main>
   );

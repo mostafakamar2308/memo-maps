@@ -65,6 +65,15 @@ export function NavBar({
         arrow
       </button>
       <button
+        onClick={() => changeTool("text")}
+        className={cn(
+          "duration-300 p-2 px-3 rounded-xl hover:bg-[#eee] cursor-pointer",
+          activeTool === "text" && "bg-[#eee]"
+        )}
+      >
+        text
+      </button>
+      <button
         onClick={() => changeTool("eraser")}
         className={cn(
           "duration-300 p-2 px-3 rounded-xl hover:bg-[#eee] cursor-pointer",

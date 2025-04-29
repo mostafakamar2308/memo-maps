@@ -4,7 +4,14 @@ export type Node = {
   y: number;
   width: number;
   height: number;
-  type: "square" | "circle" | "diamond" | "line" | "hand-drawn" | "custom";
+  type:
+    | "square"
+    | "circle"
+    | "diamond"
+    | "line"
+    | "hand-drawn"
+    | "text"
+    | "custom";
   contentType: "text" | "image";
   content: string;
   points?: number[];
@@ -32,5 +39,6 @@ export type Tool =
   | "eraser"
   | "line"
   | "hand-drawn"
+  | "text"
   | "eclipse"
   | "arrow";

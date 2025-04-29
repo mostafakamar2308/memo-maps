@@ -3,12 +3,14 @@ import { useState } from "react";
 import { Node, Tool } from "@/types/Canvas";
 import { ShapeRenderer } from "@/Components/ShapeRenderer";
 import { getRandomHSLColor } from "@/utils/colors";
+import { Textarea } from "./Textarea";
 
 type Props = {
   activeTool: Tool;
+  changeActiveTool: (tool: Tool) => void;
 };
 
-export function StageCanvas({ activeTool }: Props) {
+export function StageCanvas({ activeTool, changeActiveTool }: Props) {
   const [zoomLevel, setZoomLevel] = useState(1); // Current zoom level
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 }); // Panning offset
   const [nodes, setNodes] = useState<Node[]>([]); // List of nodes
@@ -41,6 +43,12 @@ export function StageCanvas({ activeTool }: Props) {
   const [tempArrow, setTempArrow] = useState<{
     start: { x: number; y: number };
     end: { x: number; y: number };
+  } | null>(null);
+
+  const [editingText, setEditingText] = useState<{
+    clientX: number;
+    clientY: number;
+    node: Node;
   } | null>(null);
 
   // Calculate extended bounds (200% of visible area)
@@ -425,6 +433,38 @@ export function StageCanvas({ activeTool }: Props) {
     }
   };
 
+  const handleDoubleClick = (e: MouseEvent) => {
+    const stage = e.target as HTMLDivElement; // Get the stage element
+    const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
+
+    // Calculate the position relative to the infinite canvas
+    const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
+    const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+
+    const newTextNode: Node = {
+      id: Date.now().toString(),
+      type: "square",
+      x: canvasX,
+      y: canvasY,
+      width: 100,
+      height: 30,
+      content: "",
+      contentType: "text",
+      layer: 1,
+      bgColor: "transparent",
+      borderColor: "transparent",
+      textColor: "black",
+      fontSize: 16,
+    };
+
+    setNodes((prev) => [...prev, newTextNode]);
+    setEditingText({
+      node: newTextNode,
+      clientX: e.clientX,
+      clientY: e.clientY,
+    });
+  };
+
   const renderTempRhomboid = () => {
     if (!tempRhomboid) return null;
 
@@ -559,93 +599,117 @@ export function StageCanvas({ activeTool }: Props) {
   };
 
   return (
-    <Stage
-      width={window.innerWidth}
-      height={window.innerHeight}
-      draggable={false} // Disable default dragging behavior
-      onMouseDown={(e) => handleMouseDown(e.evt)}
-      onMouseMove={(e) => handleMouseMove(e.evt)}
-      onMouseUp={() => handleMouseUp()}
-      onWheel={(e) => handleWheel(e.evt)}
-      scaleX={zoomLevel}
-      scaleY={zoomLevel}
-      x={stagePosition.x}
-      y={stagePosition.y}
-    >
-      <Layer>{generateGridLines()}</Layer>
+    <>
+      <Stage
+        className="relative"
+        width={window.innerWidth}
+        height={window.innerHeight}
+        draggable={false} // Disable default dragging behavior
+        onMouseDown={(e) => handleMouseDown(e.evt)}
+        onMouseMove={(e) => handleMouseMove(e.evt)}
+        onMouseUp={() => handleMouseUp()}
+        onWheel={(e) => handleWheel(e.evt)}
+        onDblClick={(e) => handleDoubleClick(e.evt)}
+        scaleX={zoomLevel}
+        scaleY={zoomLevel}
+        x={stagePosition.x}
+        y={stagePosition.y}
+      >
+        <Layer>{generateGridLines()}</Layer>
 
-      {/* Render only visible nodes */}
-      <Layer>
-        {visibleNodes.map((node) => (
-          <ShapeRenderer key={node.id} node={node} />
-        ))}
-      </Layer>
+        {/* Render only visible nodes */}
+        <Layer>
+          {visibleNodes.map((node) => (
+            <ShapeRenderer currentTool={activeTool} key={node.id} node={node} />
+          ))}
+        </Layer>
 
-      {/* Render temporary circle while drawing */}
-      <Layer>
-        {activeTool === "eclipse" && tempCircle && (
-          <Ellipse
-            x={tempCircle.centerX}
-            y={tempCircle.centerY}
-            radiusX={tempCircle.radiusX}
-            radiusY={tempCircle.radiusY}
-            stroke="#f00"
-            strokeWidth={2}
-          />
-        )}
-
-        {activeTool === "diamond" && tempRhomboid && renderTempRhomboid()}
-
-        {activeTool === "square" && tempShape && (
-          <Rect
-            x={tempShape.x}
-            y={tempShape.y}
-            width={tempShape.width}
-            height={tempShape.height}
-            stroke="#f00"
-            strokeWidth={2}
-          />
-        )}
-
-        {"line" === activeTool && tempArrow && (
-          <>
-            <Line
-              points={[
-                tempArrow.start.x,
-                tempArrow.start.y,
-                tempArrow.end.x,
-                tempArrow.end.y,
-              ]}
-              stroke="#f00"
-              strokeWidth={3}
-            />
-            <Shape
-              sceneFunc={(context) => {
-                if (!tempArrow) return;
-                const arrowHead = getArrowHeadPoints(tempArrow);
-                if (!arrowHead) return;
-                context.beginPath();
-                context.moveTo(tempArrow.end.x, tempArrow.end.y);
-                context.lineTo(arrowHead[0].x, arrowHead[0].y);
-                context.lineTo(arrowHead[1].x, arrowHead[1].y);
-                context.strokeStyle = "#f00";
-                context.fillStyle = "#f00";
-                context.closePath();
-                context.stroke();
-                context.fill();
-              }}
+        {/* Render temporary circle while drawing */}
+        <Layer>
+          {activeTool === "eclipse" && tempCircle && (
+            <Ellipse
+              x={tempCircle.centerX}
+              y={tempCircle.centerY}
+              radiusX={tempCircle.radiusX}
+              radiusY={tempCircle.radiusY}
               stroke="#f00"
               strokeWidth={2}
             />
-          </>
-        )}
+          )}
 
-        {"hand-drawn" === activeTool && tempLine && (
-          <>
-            <Line points={tempLine} stroke="#f00" strokeWidth={3} />
-          </>
-        )}
-      </Layer>
-    </Stage>
+          {activeTool === "diamond" && tempRhomboid && renderTempRhomboid()}
+
+          {activeTool === "square" && tempShape && (
+            <Rect
+              x={tempShape.x}
+              y={tempShape.y}
+              width={tempShape.width}
+              height={tempShape.height}
+              stroke="#f00"
+              strokeWidth={2}
+            />
+          )}
+
+          {"line" === activeTool && tempArrow && (
+            <>
+              <Line
+                points={[
+                  tempArrow.start.x,
+                  tempArrow.start.y,
+                  tempArrow.end.x,
+                  tempArrow.end.y,
+                ]}
+                stroke="#f00"
+                strokeWidth={3}
+              />
+              <Shape
+                sceneFunc={(context) => {
+                  if (!tempArrow) return;
+                  const arrowHead = getArrowHeadPoints(tempArrow);
+                  if (!arrowHead) return;
+                  context.beginPath();
+                  context.moveTo(tempArrow.end.x, tempArrow.end.y);
+                  context.lineTo(arrowHead[0].x, arrowHead[0].y);
+                  context.lineTo(arrowHead[1].x, arrowHead[1].y);
+                  context.strokeStyle = "#f00";
+                  context.fillStyle = "#f00";
+                  context.closePath();
+                  context.stroke();
+                  context.fill();
+                }}
+                stroke="#f00"
+                strokeWidth={2}
+              />
+            </>
+          )}
+
+          {"hand-drawn" === activeTool && tempLine && (
+            <>
+              <Line points={tempLine} stroke="#f00" strokeWidth={3} />
+            </>
+          )}
+        </Layer>
+      </Stage>
+      {editingText && (
+        <Textarea
+          nodeId={editingText.node.id}
+          clientX={editingText.clientX}
+          clientY={editingText.clientY}
+          onBlur={() => {
+            setEditingText(null);
+            changeActiveTool("select");
+          }}
+          onChange={({ nodeId, text, width, height }) => {
+            setNodes((prev) =>
+              prev.map((node) =>
+                node.id === nodeId
+                  ? { ...node, content: text, width, height }
+                  : node
+              )
+            );
+          }}
+        />
+      )}
+    </>
   );
 }

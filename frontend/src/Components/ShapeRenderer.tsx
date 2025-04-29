@@ -1,8 +1,14 @@
 import { Group, Image, Rect, Text, Ellipse, Shape, Line } from "react-konva";
-import { Node } from "@/types/Canvas";
+import { Node, Tool } from "@/types/Canvas";
 import useImage from "use-image";
 
-export function ShapeRenderer({ node }: { node: Node }) {
+export function ShapeRenderer({
+  node,
+  currentTool,
+}: {
+  node: Node;
+  currentTool: Tool;
+}) {
   const [image] = useImage(
     node.contentType === "image"
       ? "https://konvajs.org/assets/darth-vader.jpg"
@@ -13,14 +19,12 @@ export function ShapeRenderer({ node }: { node: Node }) {
 
   if (node.type === "square")
     return (
-      <Group draggable={true} x={x ?? 0} y={y ?? 0}>
+      <Group draggable={currentTool !== "line"} x={x ?? 0} y={y ?? 0}>
         {node.contentType === "text" && content !== "" && (
           <Text
             fill={node.textColor || "black"}
             text={node.content}
             {...validProps}
-            offsetX={-node.width / 2}
-            offsetY={-node.height / 2}
           />
         )}
         {node.contentType === "image" && <Image image={image} {...node} />}
@@ -30,7 +34,7 @@ export function ShapeRenderer({ node }: { node: Node }) {
 
   if (node.type === "circle")
     return (
-      <Group draggable x={x ?? 0} y={y ?? 0}>
+      <Group draggable={currentTool !== "line"} x={x ?? 0} y={y ?? 0}>
         {node.contentType === "text" && (
           <Text text={node.content} {...validProps} />
         )}
@@ -60,7 +64,13 @@ export function ShapeRenderer({ node }: { node: Node }) {
     const height = maxY - minY;
 
     return (
-      <Group width={width} height={height} draggable x={x ?? 0} y={y ?? 0}>
+      <Group
+        width={width}
+        height={height}
+        draggable={currentTool !== "line"}
+        x={x ?? 0}
+        y={y ?? 0}
+      >
         {node.contentType === "text" && (
           <Text text={node.content} {...validProps} />
         )}
@@ -112,39 +122,39 @@ export function ShapeRenderer({ node }: { node: Node }) {
     );
   }
 
-  const getArrowHeadPoints = (data: number[]) => {
+  const getlineHeadPoints = (data: number[]) => {
     if (!data) return;
     const dx = data[2] - data[0];
     const dy = data[3] - data[1];
     const angle = Math.atan2(dy, dx);
-    const arrowLength = 15;
-    const arrowAngle = Math.PI / 6;
+    const lineLength = 15;
+    const lineAngle = Math.PI / 6;
 
     return [
       {
-        x: data[2] - arrowLength * Math.cos(angle - arrowAngle),
-        y: data[3] - arrowLength * Math.sin(angle - arrowAngle),
+        x: data[2] - lineLength * Math.cos(angle - lineAngle),
+        y: data[3] - lineLength * Math.sin(angle - lineAngle),
       },
       {
-        x: data[2] - arrowLength * Math.cos(angle + arrowAngle),
-        y: data[3] - arrowLength * Math.sin(angle + arrowAngle),
+        x: data[2] - lineLength * Math.cos(angle + lineAngle),
+        y: data[3] - lineLength * Math.sin(angle + lineAngle),
       },
     ];
   };
 
   if (["hand-drawn", "line"].includes(node.type) && node.points) {
     return (
-      <Group draggable>
+      <Group draggable={currentTool !== "line"}>
         <Line points={node.points} stroke="#f00" strokeWidth={2} />
         {node.type === "line" ? (
           <Shape
             sceneFunc={(context) => {
-              const arrowHead = getArrowHeadPoints(node.points!);
-              if (!arrowHead || !node.points) return;
+              const lineHead = getlineHeadPoints(node.points!);
+              if (!lineHead || !node.points) return;
               context.beginPath();
               context.moveTo(node.points[2], node.points[3]);
-              context.lineTo(arrowHead[0].x, arrowHead[0].y);
-              context.lineTo(arrowHead[1].x, arrowHead[1].y);
+              context.lineTo(lineHead[0].x, lineHead[0].y);
+              context.lineTo(lineHead[1].x, lineHead[1].y);
               context.strokeStyle = "#f00";
               context.fillStyle = "#f00";
               context.closePath();
