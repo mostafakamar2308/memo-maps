@@ -12,6 +12,8 @@ type Props = {
 
 export function StageCanvas({ activeTool, changeActiveTool }: Props) {
   const [zoomLevel, setZoomLevel] = useState(1); // Current zoom level
+  const [selectedShape, setSelectedShape] = useState<string | null>(null);
+
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 }); // Panning offset
   const [nodes, setNodes] = useState<Node[]>([]); // List of nodes
   const [isPanning, setIsPanning] = useState(false); // Track if panning is active
@@ -431,6 +433,7 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
       setIsDrawing(false);
       setTempArrow(null);
     }
+    changeActiveTool("select");
   };
 
   const handleDoubleClick = (e: MouseEvent) => {
@@ -549,6 +552,21 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
     ];
   };
 
+  const changeProp = <K extends keyof Node>(
+    prop: K,
+    value: Node[K],
+    id: string
+  ) => {
+    setNodes((prev) =>
+      prev.map((node) => {
+        if (node.id === id) {
+          return { ...node, [prop]: value };
+        }
+        return node;
+      })
+    );
+  };
+
   // Generate adaptive grid lines
   const gridSize = 20; // Base distance between grid lines
   const generateGridLines = () => {
@@ -620,7 +638,12 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
         {/* Render only visible nodes */}
         <Layer>
           {visibleNodes.map((node) => (
-            <ShapeRenderer currentTool={activeTool} key={node.id} node={node} />
+            <ShapeRenderer
+              onSelect={setSelectedShape}
+              currentTool={activeTool}
+              key={node.id}
+              node={node}
+            />
           ))}
         </Layer>
 
@@ -690,6 +713,91 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
           )}
         </Layer>
       </Stage>
+      {selectedShape && (
+        <div className="fixed left-3 p-2 rounded-xl top-1/2 -translate-y-1/2 w-60 h-2/3 border bg-red-50 border-red-300">
+          <div>
+            <h3>bg Color</h3>
+            <div className="flex justify-around [&>*]:border">
+              <button
+                onClick={() => changeProp("bgColor", "red", selectedShape)}
+                className="bg-red-700 w-5 h-5 rounded"
+              />
+              <button
+                onClick={() => changeProp("bgColor", "green", selectedShape)}
+                className="bg-green-700 w-5 h-5 rounded"
+              />
+              <button
+                onClick={() => changeProp("bgColor", "black", selectedShape)}
+                className="bg-black w-5 h-5 rounded"
+              />
+              <button
+                onClick={() => changeProp("bgColor", "white", selectedShape)}
+                className="bg-white w-5 h-5 rounded"
+              />
+              <button
+                onClick={() => changeProp("bgColor", "blue", selectedShape)}
+                className="bg-blue-700 w-5 h-5 rounded"
+              />
+            </div>
+          </div>
+          <div>
+            <h3>border Color</h3>
+            <div className="flex justify-around [&>*]:border">
+              <button
+                onClick={() => changeProp("borderColor", "red", selectedShape)}
+                className="bg-red-700 w-5 h-5 rounded"
+              />
+              <button
+                onClick={() =>
+                  changeProp("borderColor", "green", selectedShape)
+                }
+                className="bg-green-700 w-5 h-5 rounded"
+              />
+              <button
+                onClick={() =>
+                  changeProp("borderColor", "black", selectedShape)
+                }
+                className="bg-black w-5 h-5 rounded"
+              />
+              <button
+                onClick={() =>
+                  changeProp("borderColor", "white", selectedShape)
+                }
+                className="bg-white w-5 h-5 rounded"
+              />
+              <button
+                onClick={() => changeProp("borderColor", "blue", selectedShape)}
+                className="bg-blue-700 w-5 h-5 rounded"
+              />
+            </div>
+          </div>
+          <div>
+            <h3>Text Color</h3>
+            <div className="flex justify-around [&>*]:border">
+              <button
+                onClick={() => changeProp("textColor", "red", selectedShape)}
+                className="bg-red-700 w-5 h-5 rounded"
+              />
+              <button
+                onClick={() => changeProp("textColor", "green", selectedShape)}
+                className="bg-green-700 w-5 h-5 rounded"
+              />
+              <button
+                onClick={() => changeProp("textColor", "black", selectedShape)}
+                className="bg-black w-5 h-5 rounded"
+              />
+              <button
+                onClick={() => changeProp("textColor", "white", selectedShape)}
+                className="bg-white w-5 h-5 rounded"
+              />
+              <button
+                onClick={() => changeProp("textColor", "blue", selectedShape)}
+                className="bg-blue-700 w-5 h-5 rounded"
+              />
+            </div>
+          </div>
+        </div>
+      )}
       {editingText && (
         <Textarea
           nodeId={editingText.node.id}

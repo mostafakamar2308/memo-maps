@@ -5,8 +5,10 @@ import useImage from "use-image";
 export function ShapeRenderer({
   node,
   currentTool,
+  onSelect,
 }: {
   node: Node;
+  onSelect: (id: string) => void;
   currentTool: Tool;
 }) {
   const [image] = useImage(
@@ -19,7 +21,12 @@ export function ShapeRenderer({
 
   if (node.type === "square")
     return (
-      <Group draggable={currentTool !== "line"} x={x ?? 0} y={y ?? 0}>
+      <Group
+        onClick={() => onSelect(node.id)}
+        draggable={currentTool !== "line"}
+        x={x ?? 0}
+        y={y ?? 0}
+      >
         {node.contentType === "text" && content !== "" && (
           <Text
             fill={node.textColor || "black"}
@@ -34,7 +41,12 @@ export function ShapeRenderer({
 
   if (node.type === "circle")
     return (
-      <Group draggable={currentTool !== "line"} x={x ?? 0} y={y ?? 0}>
+      <Group
+        onClick={() => onSelect(node.id)}
+        draggable={currentTool !== "line"}
+        x={x ?? 0}
+        y={y ?? 0}
+      >
         {node.contentType === "text" && (
           <Text text={node.content} {...validProps} />
         )}
@@ -67,6 +79,7 @@ export function ShapeRenderer({
       <Group
         width={width}
         height={height}
+        onClick={() => onSelect(node.id)}
         draggable={currentTool !== "line"}
         x={x ?? 0}
         y={y ?? 0}
@@ -148,6 +161,7 @@ export function ShapeRenderer({
         <Line points={node.points} stroke="#f00" strokeWidth={2} />
         {node.type === "line" ? (
           <Shape
+            onClick={() => onSelect(node.id)}
             sceneFunc={(context) => {
               const lineHead = getlineHeadPoints(node.points!);
               if (!lineHead || !node.points) return;
