@@ -1,9 +1,11 @@
 import { Layer, Stage, Rect, Ellipse, Shape, Line } from "react-konva";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Node, Tool } from "@/types/Canvas";
 import { ShapeRenderer } from "@/Components/ShapeRenderer";
 import { getRandomHSLColor } from "@/utils/colors";
 import { Textarea } from "./Textarea";
+import { Sidebar } from "./Sidebar";
+import { getCoordinates } from "@/utils/coordinates";
 
 type Props = {
   activeTool: Tool;
@@ -27,7 +29,7 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
     radiusY: number;
   } | null>(null); // Temporary circle state
 
-  const [tempShape, setTempShape] = useState<{
+  const [tempSquare, setTempSquare] = useState<{
     x: number;
     y: number;
     width: number;
@@ -41,7 +43,9 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
     endY: number;
   } | null>(null);
 
-  const [tempLine, setTempLine] = useState<number[] | null>(null);
+  const [tempHandDrawnLine, setTempHandDrawnLine] = useState<number[] | null>(
+    null
+  );
   const [tempArrow, setTempArrow] = useState<{
     start: { x: number; y: number };
     end: { x: number; y: number };
@@ -54,7 +58,7 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
   } | null>(null);
 
   // Calculate extended bounds (200% of visible area)
-  const getExtendedBounds = () => {
+  const getExtendedBounds = useCallback(() => {
     const viewportWidth = window.innerWidth / zoomLevel;
     const viewportHeight = window.innerHeight / zoomLevel;
 
@@ -67,196 +71,212 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
       top: centerY - viewportHeight * 1.5,
       bottom: centerY + viewportHeight * 2,
     };
-  };
+  }, [zoomLevel, stagePosition]);
 
   // Filter nodes within the extended bounds
-  const visibleNodes = nodes.filter((node) => {
-    const { left, right, top, bottom } = getExtendedBounds();
-    const nodeRadius = Math.max(node.width, node.height) / 2; // Approximate radius for circles
-    return (
-      node.x - nodeRadius <= right &&
-      node.x + nodeRadius >= left &&
-      node.y - nodeRadius <= bottom &&
-      node.y + nodeRadius >= top
-    );
-  });
+  const visibleNodes = useMemo(
+    () =>
+      nodes.filter((node) => {
+        const { left, right, top, bottom } = getExtendedBounds();
+        const nodeRadius = Math.max(node.width, node.height) / 2; // Approximate radius for circles
+        return (
+          node.x - nodeRadius <= right &&
+          node.x + nodeRadius >= left &&
+          node.y - nodeRadius <= bottom &&
+          node.y + nodeRadius >= top
+        );
+      }),
+    [nodes, getExtendedBounds]
+  );
 
-  // Handle mouse down for panning or drawing
-  const handleMouseDown = (e: MouseEvent) => {
-    if (e.ctrlKey) {
-      // Start panning if Ctrl is pressed
-      setIsPanning(true);
-    }
-    if (!e.ctrlKey && activeTool === "eclipse") {
-      // Start drawing a circle otherwise
-      const stage = e.target as HTMLDivElement; // Get the stage element
-      const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
-
-      // Calculate the position relative to the infinite canvas
-      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
-
-      // Start drawing a new circle
-      setIsDrawing(true);
-      setTempCircle({
-        startX: canvasX,
-        centerX: canvasX,
-        startY: canvasY,
-        centerY: canvasY,
-        radiusX: 0,
-        radiusY: 0,
-      });
-    }
-
-    if (!e.ctrlKey && activeTool === "square") {
-      const stage = e.target as HTMLDivElement; // Get the stage element
-      const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
-
-      // Calculate the position relative to the infinite canvas
-      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
-
-      setIsDrawing(true);
-      setTempShape({
-        x: canvasX,
-        y: canvasY,
-        width: 0,
-        height: 0,
-      });
-    }
-    if (!e.ctrlKey && activeTool === "diamond") {
-      const stage = e.target as HTMLDivElement; // Get the stage element
-      const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
-
-      // Calculate the position relative to the infinite canvas
-      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
-      console.log("Canvas Position:", { canvasX, canvasY });
-
-      setIsDrawing(true);
-      setTempRhomboid({
-        startX: canvasX,
-        startY: canvasY,
-        endX: canvasX,
-        endY: canvasY,
-      });
-    }
-    if (!e.ctrlKey && activeTool === "hand-drawn") {
-      const stage = e.target as HTMLDivElement; // Get the stage element
-      const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
-
-      // Calculate the position relative to the infinite canvas
-      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+  const handleMouseDown = useCallback(
+    (e: MouseEvent) => {
+      if (e.ctrlKey) return setIsPanning(true);
 
       setIsDrawing(true);
 
-      setTempLine([canvasX, canvasY]);
-    }
+      if (activeTool === "eclipse") {
+        const { canvasX, canvasY } = getCoordinates(
+          e,
+          zoomLevel,
+          stagePosition
+        );
 
-    if (!e.ctrlKey && activeTool === "line") {
-      const stage = e.target as HTMLDivElement;
-      const rect = stage.getBoundingClientRect();
-      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
-      setIsDrawing(true);
-      setTempArrow({
-        start: { x: canvasX, y: canvasY },
-        end: { x: canvasX, y: canvasY },
-      });
-    }
-  };
+        // Start drawing a new circle
+        setTempCircle({
+          startX: canvasX,
+          centerX: canvasX,
+          startY: canvasY,
+          centerY: canvasY,
+          radiusX: 0,
+          radiusY: 0,
+        });
+      }
 
-  // Handle mouse move for panning or resizing the circle
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isPanning && e.ctrlKey) {
-      // Pan the canvas
-      setStagePosition((prev) => ({
-        x: prev.x + e.movementX,
-        y: prev.y + e.movementY,
-      }));
-    }
+      if (activeTool === "square") {
+        const { canvasX, canvasY } = getCoordinates(
+          e,
+          zoomLevel,
+          stagePosition
+        );
 
-    if (activeTool === "eclipse" && isDrawing && tempCircle) {
-      // Resize the circle
-      const stage = e.target as HTMLDivElement; // Get the stage element
-      const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
+        setTempSquare({
+          x: canvasX,
+          y: canvasY,
+          width: 0,
+          height: 0,
+        });
+      }
 
-      // Calculate the current mouse position relative to the infinite canvas
-      const mouseX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-      const mouseY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+      if (activeTool === "diamond") {
+        const { canvasX, canvasY } = getCoordinates(
+          e,
+          zoomLevel,
+          stagePosition
+        );
 
-      const centerX = (mouseX + tempCircle.startX) / 2;
-      const centerY = (mouseY + tempCircle.startY) / 2;
+        setTempRhomboid({
+          startX: canvasX,
+          startY: canvasY,
+          endX: canvasX,
+          endY: canvasY,
+        });
+      }
 
-      // Calculate the radius based on the distance from the initial click position
-      const radiusX = Math.abs(mouseX - centerX);
-      const radiusY = Math.abs(mouseY - centerY);
+      if (activeTool === "hand-drawn") {
+        const { canvasX, canvasY } = getCoordinates(
+          e,
+          zoomLevel,
+          stagePosition
+        );
 
-      // Update the temporary circle's radius
-      setTempCircle((prev) =>
-        prev ? { ...prev, radiusX, radiusY, centerX, centerY } : null
-      );
-    }
-    if (activeTool === "square" && isDrawing && tempShape) {
-      const stage = e.target as HTMLDivElement; // Get the stage element
-      const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
+        setTempHandDrawnLine([canvasX, canvasY]);
+      }
 
-      // Calculate the current mouse position relative to the infinite canvas
-      const mouseX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-      const mouseY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+      if (activeTool === "line") {
+        const { canvasX, canvasY } = getCoordinates(
+          e,
+          zoomLevel,
+          stagePosition
+        );
+        setTempArrow({
+          start: { x: canvasX, y: canvasY },
+          end: { x: canvasX, y: canvasY },
+        });
+      }
+    },
+    [activeTool, stagePosition, zoomLevel]
+  );
 
-      const width = mouseX - tempShape.x;
-      const height = mouseY - tempShape.y;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (isPanning && e.ctrlKey)
+        return setStagePosition((prev) => ({
+          x: prev.x + e.movementX,
+          y: prev.y + e.movementY,
+        }));
 
-      if (tempShape)
-        setTempShape({ x: tempShape.x, y: tempShape.y, width, height });
-    }
+      if (activeTool === "eclipse" && isDrawing && tempCircle) {
+        const { canvasX, canvasY } = getCoordinates(
+          e,
+          zoomLevel,
+          stagePosition
+        );
 
-    if (activeTool === "diamond" && isDrawing && tempRhomboid) {
-      const stage = e.target as HTMLDivElement; // Get the stage element
-      const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
+        const centerX = (canvasX + tempCircle.startX) / 2;
+        const centerY = (canvasY + tempCircle.startY) / 2;
 
-      // Calculate the current mouse position relative to the infinite canvas
-      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+        // Calculate the radius based on the distance from the initial click position
+        const radiusX = Math.abs(canvasX - centerX);
+        const radiusY = Math.abs(canvasY - centerY);
 
-      setTempRhomboid({
-        startX: tempRhomboid.startX,
-        startY: tempRhomboid.startY,
-        endX: canvasX,
-        endY: canvasY,
-      });
-    }
+        // Update the temporary circle's radius
+        setTempCircle((prev) =>
+          prev ? { ...prev, radiusX, radiusY, centerX, centerY } : null
+        );
+      }
 
-    if (activeTool === "hand-drawn" && isDrawing && tempLine) {
-      const stage = e.target as HTMLDivElement; // Get the stage element
-      const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
+      if (activeTool === "square" && isDrawing && tempSquare) {
+        const { canvasX, canvasY } = getCoordinates(
+          e,
+          zoomLevel,
+          stagePosition
+        );
 
-      // Calculate the position relative to the infinite canvas
-      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+        const width = canvasX - tempSquare.x;
+        const height = canvasY - tempSquare.y;
 
-      if (tempLine) setTempLine([...tempLine, canvasX, canvasY]);
-    }
+        if (tempSquare)
+          setTempSquare({ x: tempSquare.x, y: tempSquare.y, width, height });
+      }
 
-    if (activeTool === "line" && isDrawing && tempArrow) {
-      const stage = e.target as HTMLDivElement;
-      const rect = stage.getBoundingClientRect();
-      const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-      const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
-      setTempArrow((prev) => ({ ...prev!, end: { x: canvasX, y: canvasY } }));
-    }
-  };
+      if (activeTool === "diamond" && isDrawing && tempRhomboid) {
+        const { canvasX, canvasY } = getCoordinates(
+          e,
+          zoomLevel,
+          stagePosition
+        );
+
+        setTempRhomboid({
+          startX: tempRhomboid.startX,
+          startY: tempRhomboid.startY,
+          endX: canvasX,
+          endY: canvasY,
+        });
+      }
+
+      if (activeTool === "hand-drawn" && isDrawing && tempHandDrawnLine) {
+        const { canvasX, canvasY } = getCoordinates(
+          e,
+          zoomLevel,
+          stagePosition
+        );
+
+        if (tempHandDrawnLine)
+          setTempHandDrawnLine([...tempHandDrawnLine, canvasX, canvasY]);
+      }
+
+      if (activeTool === "line" && isDrawing && tempArrow) {
+        const { canvasX, canvasY } = getCoordinates(
+          e,
+          zoomLevel,
+          stagePosition
+        );
+
+        setTempArrow((prev) =>
+          prev ? { ...prev, end: { x: canvasX, y: canvasY } } : null
+        );
+      }
+    },
+    [
+      tempArrow,
+      tempCircle,
+      tempHandDrawnLine,
+      tempRhomboid,
+      tempSquare,
+      activeTool,
+      isDrawing,
+      isPanning,
+      zoomLevel,
+      stagePosition,
+    ]
+  );
 
   // Handle mouse up to stop panning or finalize the circle
-  const handleMouseUp = () => {
-    if (isPanning) {
-      // Stop panning
-      setIsPanning(false);
-    }
+  const handleMouseUp = useCallback(() => {
+    setIsPanning(false);
+    // Reset drawing state
+    setIsDrawing(false);
+    setTempCircle(null);
+    setTempSquare(null);
+    setTempRhomboid(null);
+    setTempHandDrawnLine(null);
+    setTempArrow(null);
+    changeActiveTool("select");
 
-    if (activeTool === "eclipse" && isDrawing && tempCircle) {
+    if (!isDrawing) return;
+
+    if (activeTool === "eclipse" && tempCircle)
       // Finalize the circle
       setNodes((prev) => [
         ...prev,
@@ -264,42 +284,34 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
           type: "circle",
           x: tempCircle.centerX,
           y: tempCircle.centerY,
-          width: tempCircle.radiusX, // Diameter
-          height: tempCircle.radiusY, // Diameter
+          width: tempCircle.radiusX,
+          height: tempCircle.radiusY,
           content: "",
           contentType: "text",
           layer: 1,
-          bgColor: getRandomHSLColor(), // Set a default fill color
-          id: `${Date.now()}`, // Unique ID based on timestamp
+          bgColor: getRandomHSLColor(),
+          id: `${Date.now()}`,
         },
       ]);
 
-      // Reset drawing state
-      setIsDrawing(false);
-      setTempCircle(null);
-    }
-    if (activeTool === "square" && isDrawing && tempShape) {
+    if (activeTool === "square" && tempSquare)
       setNodes((prev) => [
         ...prev,
         {
           type: activeTool,
-          x: tempShape.x,
-          y: tempShape.y,
-          width: tempShape.width,
-          height: tempShape.height,
+          x: tempSquare.x,
+          y: tempSquare.y,
+          width: tempSquare.width,
+          height: tempSquare.height,
           content: "",
           contentType: "text",
           layer: 1,
-          bgColor: getRandomHSLColor(), // Set a default fill color
-          id: `${Date.now()}`, // Unique ID based on timestamp
+          bgColor: getRandomHSLColor(),
+          id: `${Date.now()}`,
         },
       ]);
 
-      setIsDrawing(false);
-      setTempShape(null);
-    }
-
-    if (activeTool === "diamond" && isDrawing && tempRhomboid) {
+    if (activeTool === "diamond" && tempRhomboid) {
       const { startX, startY, endX, endY } = tempRhomboid;
 
       const centerX = (startX + endX) / 2;
@@ -308,7 +320,6 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
       const width = Math.abs(endX - startX);
       const height = Math.abs(endY - startY);
 
-      // Calculate absolute points for the diamond
       const absolutePoints = [
         centerX,
         centerY - height / 2, // Top vertex
@@ -327,6 +338,7 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
         absolutePoints[4],
         absolutePoints[6],
       ];
+
       const ys = [
         absolutePoints[1],
         absolutePoints[3],
@@ -350,8 +362,8 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
 
       const newDiamond: Node = {
         id: Date.now().toString(),
-        x: minX, // Set group's x to the top-left corner (minX)
-        y: minY, // Set group's y to the top-left corner (minY)
+        x: minX,
+        y: minY,
         width: width1,
         height: height2,
         type: "diamond",
@@ -368,18 +380,15 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
       };
 
       setNodes((prevNodes) => [...prevNodes, newDiamond]);
-
-      setIsDrawing(false);
-      setTempRhomboid(null);
     }
 
-    if (activeTool === "hand-drawn" && isDrawing && tempLine) {
-      const firstPoint = [tempLine[0], tempLine[1]];
-      const tempLineLength = tempLine.length;
+    if (activeTool === "hand-drawn" && tempHandDrawnLine) {
+      const firstPoint = [tempHandDrawnLine[0], tempHandDrawnLine[1]];
+      const tempLineLength = tempHandDrawnLine.length;
 
       const lastPoint = [
-        tempLine[tempLineLength - 1],
-        tempLine[tempLineLength - 2],
+        tempHandDrawnLine[tempLineLength - 1],
+        tempHandDrawnLine[tempLineLength - 2],
       ];
 
       const distance = Math.sqrt(
@@ -393,21 +402,19 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
           type: "hand-drawn",
           x: firstPoint[0],
           y: firstPoint[1],
-          width: distance, // Diameter
-          height: distance, // Diameter
-          points: tempLine,
+          width: distance,
+          height: distance,
+          points: tempHandDrawnLine,
           content: "",
           contentType: "text",
           layer: 1,
-          bgColor: getRandomHSLColor(), // Set a default fill color
-          id: `${Date.now()}`, // Unique ID based on timestamp
+          bgColor: getRandomHSLColor(),
+          id: `${Date.now()}`,
         },
       ]);
-      setIsDrawing(false);
-      setTempLine(null);
     }
 
-    if (activeTool === "line" && isDrawing && tempArrow) {
+    if (activeTool === "line" && tempArrow)
       setNodes((prev) => [
         ...prev,
         {
@@ -430,19 +437,19 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
           id: Date.now().toString(),
         },
       ]);
-      setIsDrawing(false);
-      setTempArrow(null);
-    }
-    changeActiveTool("select");
-  };
+  }, [
+    activeTool,
+    tempArrow,
+    tempCircle,
+    tempHandDrawnLine,
+    tempRhomboid,
+    tempSquare,
+    isDrawing,
+    changeActiveTool,
+  ]);
 
   const handleDoubleClick = (e: MouseEvent) => {
-    const stage = e.target as HTMLDivElement; // Get the stage element
-    const rect = stage.getBoundingClientRect(); // Get the bounding rectangle
-
-    // Calculate the position relative to the infinite canvas
-    const canvasX = (e.clientX - rect.left - stagePosition.x) / zoomLevel;
-    const canvasY = (e.clientY - rect.top - stagePosition.y) / zoomLevel;
+    const { canvasX, canvasY } = getCoordinates(e, zoomLevel, stagePosition);
 
     const newTextNode: Node = {
       id: Date.now().toString(),
@@ -468,7 +475,7 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
     });
   };
 
-  const renderTempRhomboid = () => {
+  const renderTempRhomboid = useMemo(() => {
     if (!tempRhomboid) return null;
 
     const { startX, startY, endX, endY } = tempRhomboid;
@@ -503,35 +510,38 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
         strokeWidth={2}
       />
     );
-  };
+  }, [tempRhomboid]);
 
   // Handle zooming with Ctrl + Wheel
-  const handleWheel = (e: WheelEvent) => {
-    if (!e.ctrlKey) return; // Only zoom if Ctrl is pressed
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      if (!e.ctrlKey) return; // Only zoom if Ctrl is pressed
 
-    e.preventDefault();
-    const scaleBy = 1.1; // Zoom factor
-    const newZoomLevel =
-      e.deltaY > 0 ? zoomLevel / scaleBy : zoomLevel * scaleBy;
+      e.preventDefault();
+      const scaleBy = 1.1; // Zoom factor
+      const newZoomLevel =
+        e.deltaY > 0 ? zoomLevel / scaleBy : zoomLevel * scaleBy;
 
-    // Prevent zooming too far in or out
-    if (newZoomLevel < 0.1 || newZoomLevel > 10) return;
+      // Prevent zooming too far in or out
+      if (newZoomLevel < 0.1 || newZoomLevel > 10) return;
 
-    // Calculate the mouse position relative to the stage
-    const mouseX = e.clientX - stagePosition.x;
-    const mouseY = e.clientY - stagePosition.y;
+      // Calculate the mouse position relative to the stage
+      const mouseX = e.clientX - stagePosition.x;
+      const mouseY = e.clientY - stagePosition.y;
 
-    // Adjust the stage position to keep the zoom centered on the mouse pointer
-    setStagePosition({
-      x: e.clientX - (mouseX / zoomLevel) * newZoomLevel,
-      y: e.clientY - (mouseY / zoomLevel) * newZoomLevel,
-    });
+      // Adjust the stage position to keep the zoom centered on the mouse pointer
+      setStagePosition({
+        x: e.clientX - (mouseX / zoomLevel) * newZoomLevel,
+        y: e.clientY - (mouseY / zoomLevel) * newZoomLevel,
+      });
 
-    // Update the zoom level
-    setZoomLevel(newZoomLevel);
-  };
+      // Update the zoom level
+      setZoomLevel(newZoomLevel);
+    },
+    [zoomLevel, stagePosition]
+  );
 
-  const getArrowHeadPoints = (data: typeof tempArrow) => {
+  const getArrowHeadPoints = useCallback((data: typeof tempArrow) => {
     if (!data) return;
     const { start, end } = data;
     const dx = end.x - start.x;
@@ -550,26 +560,25 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
         y: end.y - arrowLength * Math.sin(angle + arrowAngle),
       },
     ];
-  };
+  }, []);
 
-  const changeProp = <K extends keyof Node>(
-    prop: K,
-    value: Node[K],
-    id: string
-  ) => {
-    setNodes((prev) =>
-      prev.map((node) => {
-        if (node.id === id) {
-          return { ...node, [prop]: value };
-        }
-        return node;
-      })
-    );
-  };
+  const changeProp = useCallback(
+    <K extends keyof Node>(prop: K, value: Node[K], id: string) => {
+      setNodes((prev) =>
+        prev.map((node) => {
+          if (node.id === id) {
+            return { ...node, [prop]: value };
+          }
+          return node;
+        })
+      );
+    },
+    []
+  );
 
   // Generate adaptive grid lines
-  const gridSize = 20; // Base distance between grid lines
-  const generateGridLines = () => {
+  const generateGridLines = useCallback(() => {
+    const gridSize = 20; // Base distance between grid lines
     const { left, right, top, bottom } = getExtendedBounds();
 
     // Adjust grid size based on zoom level
@@ -614,7 +623,7 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
     }
 
     return lines;
-  };
+  }, [getExtendedBounds, zoomLevel]);
 
   return (
     <>
@@ -660,14 +669,14 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
             />
           )}
 
-          {activeTool === "diamond" && tempRhomboid && renderTempRhomboid()}
+          {activeTool === "diamond" && tempRhomboid && renderTempRhomboid}
 
-          {activeTool === "square" && tempShape && (
+          {activeTool === "square" && tempSquare && (
             <Rect
-              x={tempShape.x}
-              y={tempShape.y}
-              width={tempShape.width}
-              height={tempShape.height}
+              x={tempSquare.x}
+              y={tempSquare.y}
+              width={tempSquare.width}
+              height={tempSquare.height}
               stroke="#f00"
               strokeWidth={2}
             />
@@ -706,98 +715,14 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
             </>
           )}
 
-          {"hand-drawn" === activeTool && tempLine && (
+          {"hand-drawn" === activeTool && tempHandDrawnLine && (
             <>
-              <Line points={tempLine} stroke="#f00" strokeWidth={3} />
+              <Line points={tempHandDrawnLine} stroke="#f00" strokeWidth={3} />
             </>
           )}
         </Layer>
       </Stage>
-      {selectedShape && (
-        <div className="fixed left-3 p-2 rounded-xl top-1/2 -translate-y-1/2 w-60 h-2/3 border bg-red-50 border-red-300">
-          <div>
-            <h3>bg Color</h3>
-            <div className="flex justify-around [&>*]:border">
-              <button
-                onClick={() => changeProp("bgColor", "red", selectedShape)}
-                className="bg-red-700 w-5 h-5 rounded"
-              />
-              <button
-                onClick={() => changeProp("bgColor", "green", selectedShape)}
-                className="bg-green-700 w-5 h-5 rounded"
-              />
-              <button
-                onClick={() => changeProp("bgColor", "black", selectedShape)}
-                className="bg-black w-5 h-5 rounded"
-              />
-              <button
-                onClick={() => changeProp("bgColor", "white", selectedShape)}
-                className="bg-white w-5 h-5 rounded"
-              />
-              <button
-                onClick={() => changeProp("bgColor", "blue", selectedShape)}
-                className="bg-blue-700 w-5 h-5 rounded"
-              />
-            </div>
-          </div>
-          <div>
-            <h3>border Color</h3>
-            <div className="flex justify-around [&>*]:border">
-              <button
-                onClick={() => changeProp("borderColor", "red", selectedShape)}
-                className="bg-red-700 w-5 h-5 rounded"
-              />
-              <button
-                onClick={() =>
-                  changeProp("borderColor", "green", selectedShape)
-                }
-                className="bg-green-700 w-5 h-5 rounded"
-              />
-              <button
-                onClick={() =>
-                  changeProp("borderColor", "black", selectedShape)
-                }
-                className="bg-black w-5 h-5 rounded"
-              />
-              <button
-                onClick={() =>
-                  changeProp("borderColor", "white", selectedShape)
-                }
-                className="bg-white w-5 h-5 rounded"
-              />
-              <button
-                onClick={() => changeProp("borderColor", "blue", selectedShape)}
-                className="bg-blue-700 w-5 h-5 rounded"
-              />
-            </div>
-          </div>
-          <div>
-            <h3>Text Color</h3>
-            <div className="flex justify-around [&>*]:border">
-              <button
-                onClick={() => changeProp("textColor", "red", selectedShape)}
-                className="bg-red-700 w-5 h-5 rounded"
-              />
-              <button
-                onClick={() => changeProp("textColor", "green", selectedShape)}
-                className="bg-green-700 w-5 h-5 rounded"
-              />
-              <button
-                onClick={() => changeProp("textColor", "black", selectedShape)}
-                className="bg-black w-5 h-5 rounded"
-              />
-              <button
-                onClick={() => changeProp("textColor", "white", selectedShape)}
-                className="bg-white w-5 h-5 rounded"
-              />
-              <button
-                onClick={() => changeProp("textColor", "blue", selectedShape)}
-                className="bg-blue-700 w-5 h-5 rounded"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <Sidebar changeProp={changeProp} selectedShape={selectedShape} />
       {editingText && (
         <Textarea
           nodeId={editingText.node.id}

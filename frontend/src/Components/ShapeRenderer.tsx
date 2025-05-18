@@ -1,6 +1,7 @@
 import { Group, Image, Rect, Text, Ellipse, Shape, Line } from "react-konva";
 import { Node, Tool } from "@/types/Canvas";
 import useImage from "use-image";
+import { getlineHeadPoints } from "@/utils/line";
 
 export function ShapeRenderer({
   node,
@@ -64,8 +65,8 @@ export function ShapeRenderer({
 
   if (node.type === "diamond") {
     const points = node.points || [];
-    const xs = points.filter((_, i) => i % 2 === 0); // Extract x-coordinates
-    const ys = points.filter((_, i) => i % 2 !== 0); // Extract y-coordinates
+    const xs = points.filter((_, i) => i % 2 === 0);
+    const ys = points.filter((_, i) => i % 2 !== 0);
 
     const minX = Math.min(...xs);
     const maxX = Math.max(...xs);
@@ -135,26 +136,6 @@ export function ShapeRenderer({
     );
   }
 
-  const getlineHeadPoints = (data: number[]) => {
-    if (!data) return;
-    const dx = data[2] - data[0];
-    const dy = data[3] - data[1];
-    const angle = Math.atan2(dy, dx);
-    const lineLength = 15;
-    const lineAngle = Math.PI / 6;
-
-    return [
-      {
-        x: data[2] - lineLength * Math.cos(angle - lineAngle),
-        y: data[3] - lineLength * Math.sin(angle - lineAngle),
-      },
-      {
-        x: data[2] - lineLength * Math.cos(angle + lineAngle),
-        y: data[3] - lineLength * Math.sin(angle + lineAngle),
-      },
-    ];
-  };
-
   if (["hand-drawn", "line"].includes(node.type) && node.points) {
     return (
       <Group draggable={currentTool !== "line"}>
@@ -163,7 +144,7 @@ export function ShapeRenderer({
           <Shape
             onClick={() => onSelect(node.id)}
             sceneFunc={(context) => {
-              const lineHead = getlineHeadPoints(node.points!);
+              const lineHead = getlineHeadPoints(node.points);
               if (!lineHead || !node.points) return;
               context.beginPath();
               context.moveTo(node.points[2], node.points[3]);
