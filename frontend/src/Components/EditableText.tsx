@@ -24,7 +24,7 @@ const measureTextWidth = (text: string, fontSize: number, padding: number) => {
   return width;
 };
 
-const measureTexHeight = (text: string, fontSize: number, padding: number) => {
+const measureTextHeight = (text: string, fontSize: number, padding: number) => {
   const tempText = new Konva.Text({
     text,
     fontSize,
@@ -132,11 +132,9 @@ const measureTexHeight = (text: string, fontSize: number, padding: number) => {
 //   );
 // };
 
-function getStyle(width: number, height: number, fontSize: number) {
+function getStyle(fontSize: number) {
   const isFirefox = navigator.userAgent.toLowerCase().indexOf("firefox") > -1;
   const baseStyle = {
-    width: `${width}px`,
-    height: `${height}px`,
     border: "none",
     padding: "0px",
     margin: "0px",
@@ -159,31 +157,43 @@ const TextArea: React.FC<{
   x?: number;
   y?: number;
   fontSize: number;
-  id: string;
-  width: number;
-  height: number;
   value: string;
   onBlur?: (text: string) => void;
-}> = ({ x, y, width, height, fontSize, value, onBlur }) => {
+}> = ({ x, y, fontSize, value, onBlur }) => {
   const [text, setText] = useState(value);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
   };
 
-  const style = useMemo(
-    () => getStyle(width, height, fontSize),
-    [width, height, fontSize]
+  const style = useMemo(() => getStyle(fontSize), [fontSize]);
+
+  const width = useMemo(
+    () => measureTextWidth(text, fontSize, 5),
+    [text, fontSize]
   );
+  console.log({ width });
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "5px";
+      textareaRef.current.style.height = `${
+        textareaRef.current.scrollHeight + 20
+      }px`;
+    }
+  });
 
   return (
     <Html groupProps={{ x, y }} divProps={{ style: { opacity: 1 } }}>
       <textarea
         onBlur={() => onBlur && onBlur(text)}
-        className="resize-none"
+        autoFocus
+        className="resize-none min-w-fit !min-h-fit"
         value={text}
+        ref={textareaRef}
         onChange={handleChange}
-        style={style}
+        style={{ ...style, width: width + "px" }}
       />
     </Html>
   );
@@ -200,7 +210,7 @@ const EditableText: React.FC<{
     measureTextWidth(node.content || "", node.fontSize || 16, 5)
   );
   const [textHeight, setTextHeight] = useState<number>(
-    measureTexHeight(node.content || "", node.fontSize || 16, 5)
+    measureTextHeight(node.content || "", node.fontSize || 16, 5)
   );
   const [isEditing, setIsEditing] = useState(false);
   const textRef = useRef<Konva.Text>(null);
@@ -214,7 +224,7 @@ const EditableText: React.FC<{
       node.fontSize || 16,
       textNode.padding() || 0
     );
-    const newHeight = measureTexHeight(
+    const newHeight = measureTextHeight(
       node.content || "",
       node.fontSize || 16,
       textNode.padding() || 0
@@ -257,9 +267,6 @@ const EditableText: React.FC<{
     return (
       <TextArea
         fontSize={node.fontSize || 16}
-        id={node.id}
-        width={textWidth}
-        height={textHeight}
         onBlur={(text) => {
           setIsEditing(false);
           onChange(node.id, text);

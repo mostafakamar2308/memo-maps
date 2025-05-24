@@ -71,8 +71,6 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
     };
   }, [zoomLevel, stagePosition]);
 
-  console.log({ nodes });
-
   // Filter nodes within the extended bounds
   const visibleNodes = useMemo(
     () =>
@@ -639,10 +637,9 @@ export function StageCanvas({ activeTool, changeActiveTool }: Props) {
         ref={stageRef}
         draggable={false}
         onMouseDown={(e) => {
-          if (e.target.getAttr("id") === stageRef.current?.getAttr("id")) {
-            console.log("setting selected shape to null");
+          if (e.target.getAttr("id") === stageRef.current?.getAttr("id"))
             setSelectedShape(null);
-          }
+
           handleMouseDown(e.evt);
         }}
         onMouseMove={(e) => handleMouseMove(e.evt)}
