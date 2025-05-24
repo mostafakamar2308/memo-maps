@@ -1,17 +1,12 @@
 export type Node = {
   id: string;
-  x: number;
-  y: number;
+  canvasX: number;
+  canvasY: number;
+  absoluteX?: number;
+  absoluteY?: number;
   width: number;
   height: number;
-  type:
-    | "square"
-    | "circle"
-    | "diamond"
-    | "line"
-    | "hand-drawn"
-    | "text"
-    | "custom";
+  type: NodeType;
   contentType: "text" | "image";
   content: string;
   points?: number[];
@@ -27,6 +22,15 @@ export type Node = {
   children?: number[];
   parents?: number[];
 };
+
+export type NodeType =
+  | "square"
+  | "circle"
+  | "diamond"
+  | "line"
+  | "hand-drawn"
+  | "text"
+  | "custom";
 
 export type Map = {
   nodes: Node[];

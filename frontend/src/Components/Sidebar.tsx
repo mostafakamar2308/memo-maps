@@ -1,7 +1,11 @@
 import { Node } from "@/types/Canvas";
 
 export const Sidebar: React.FC<{
-  changeProp: (key: keyof Node, val: string, nodeId: string) => void;
+  changeProp: <K extends keyof Node>(
+    prop: K,
+    value: Node[K],
+    id: string
+  ) => void;
   selectedShape: Node["id"] | null;
 }> = ({ changeProp, selectedShape }) => {
   if (!selectedShape) return null;
@@ -81,6 +85,41 @@ export const Sidebar: React.FC<{
             onClick={() => changeProp("textColor", "blue", selectedShape)}
             className="bg-blue-700 w-5 h-5 rounded"
           />
+        </div>
+      </div>
+      <div>
+        <h3>Font Size</h3>
+        <div className="flex justify-around [&>*]:border">
+          <button
+            onClick={() => changeProp("fontSize", 16, selectedShape)}
+            className="bg-red-700 w-5 h-5 rounded"
+          >
+            SM
+          </button>
+          <button
+            onClick={() => changeProp("fontSize", 20, selectedShape)}
+            className="bg-green-700 w-5 h-5 rounded"
+          >
+            LG
+          </button>
+          <button
+            onClick={() => changeProp("fontSize", 24, selectedShape)}
+            className="bg-black w-5 h-5 rounded"
+          >
+            XL
+          </button>
+          <button
+            onClick={() => changeProp("fontSize", 32, selectedShape)}
+            className="bg-white w-5 h-5 rounded"
+          >
+            2XL
+          </button>
+          <button
+            onClick={() => changeProp("fontSize", 40, selectedShape)}
+            className="bg-blue-700 w-5 h-5 rounded"
+          >
+            3XL
+          </button>
         </div>
       </div>
     </div>

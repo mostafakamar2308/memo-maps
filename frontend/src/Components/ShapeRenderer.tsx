@@ -2,15 +2,25 @@ import { Group, Image, Rect, Text, Ellipse, Shape, Line } from "react-konva";
 import { Node, Tool } from "@/types/Canvas";
 import useImage from "use-image";
 import { getlineHeadPoints } from "@/utils/line";
+import EditableText from "@/Components/EditableText";
+import Konva from "konva";
 
 export function ShapeRenderer({
   node,
   currentTool,
+  isSelected,
+  stage,
   onSelect,
+  onDoubleClick,
+  onChange,
 }: {
   node: Node;
-  onSelect: (id: string) => void;
+  stage: Konva.Stage | null;
+  isSelected?: boolean;
   currentTool: Tool;
+  onSelect: (id: string) => void;
+  onChange: (id: string, text: string) => void;
+  onDoubleClick?: (e: MouseEvent, id: string) => void;
 }) {
   const [image] = useImage(
     node.contentType === "image"
@@ -18,15 +28,30 @@ export function ShapeRenderer({
       : ""
   );
 
-  const { content, x, y, ...validProps } = node;
+  const { content, canvasX, canvasY, ...validProps } = node;
+
+  if (node.type === "text")
+    return (
+      <EditableText
+        stage={stage}
+        node={node}
+        onSelect={onSelect}
+        isSelected={isSelected}
+        onChange={onChange}
+      />
+    );
 
   if (node.type === "square")
     return (
       <Group
         onClick={() => onSelect(node.id)}
+        onDblClick={(e) => {
+          e.cancelBubble = true;
+          onDoubleClick?.(e.evt, node.id);
+        }}
         draggable={currentTool !== "line"}
-        x={x ?? 0}
-        y={y ?? 0}
+        x={canvasX ?? 0}
+        y={canvasY ?? 0}
       >
         {node.contentType === "text" && content !== "" && (
           <Text
@@ -36,7 +61,12 @@ export function ShapeRenderer({
           />
         )}
         {node.contentType === "image" && <Image image={image} {...node} />}
-        <Rect {...validProps} fill={node.bgColor || "green"} />
+        <Rect
+          {...validProps}
+          strokeWidth={validProps.borderSize}
+          stroke={validProps.borderColor}
+          fill={node.bgColor || "green"}
+        />
       </Group>
     );
 
@@ -45,8 +75,8 @@ export function ShapeRenderer({
       <Group
         onClick={() => onSelect(node.id)}
         draggable={currentTool !== "line"}
-        x={x ?? 0}
-        y={y ?? 0}
+        x={canvasX ?? 0}
+        y={canvasY ?? 0}
       >
         {node.contentType === "text" && (
           <Text text={node.content} {...validProps} />
@@ -82,8 +112,8 @@ export function ShapeRenderer({
         height={height}
         onClick={() => onSelect(node.id)}
         draggable={currentTool !== "line"}
-        x={x ?? 0}
-        y={y ?? 0}
+        x={canvasX ?? 0}
+        y={canvasY ?? 0}
       >
         {node.contentType === "text" && (
           <Text text={node.content} {...validProps} />

@@ -6,10 +6,12 @@ export function Textarea({
   onChange,
   nodeId,
   onBlur,
+  content,
 }: {
   clientX: number;
   clientY: number;
   nodeId: string;
+  content: string;
   onChange: (payload: {
     nodeId: string;
     text: string;
@@ -42,13 +44,14 @@ export function Textarea({
     >
       <textarea
         ref={textareaRef}
-        className="min-h-fit resize-none outline-none"
-        onChange={adjustHeight}
-        onBlur={(e) => {
+        defaultValue={content}
+        className="min-h-fit resize-none outline-none opacity-0"
+        onChange={(e) => {
+          adjustHeight();
           const { width, height } = e.target.getBoundingClientRect();
-          onBlur();
           onChange({ nodeId: nodeId, text: e.target.value, width, height });
         }}
+        onBlur={onBlur}
         autoFocus
         style={{ width: 200 }}
       />
